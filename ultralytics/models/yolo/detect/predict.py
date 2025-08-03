@@ -21,6 +21,7 @@ class DetectionPredictor(BasePredictor):
         postprocess: Process raw model predictions into detection results.
         construct_results: Build Results objects from processed predictions.
         construct_result: Create a single Result object from a prediction.
+        get_obj_feats: Extract object features from the feature maps.
 
     Examples:
         >>> from ultralytics.utils import ASSETS
@@ -51,7 +52,7 @@ class DetectionPredictor(BasePredictor):
             >>> results = predictor.predict("path/to/image.jpg")
             >>> processed_results = predictor.postprocess(preds, img, orig_imgs)
         """
-        save_feats = getattr(self, "save_feats", False)
+        save_feats = getattr(self, "_feats", None) is not None
         preds = ops.non_max_suppression(
             preds,
             self.args.conf,
@@ -63,6 +64,7 @@ class DetectionPredictor(BasePredictor):
             end2end=getattr(self.model, "end2end", False),
             rotated=self.args.task == "obb",
             return_idxs=save_feats,
+            obj_thres=self.args.obj,
         )
 
         if not isinstance(orig_imgs, list):  # input images are a torch.Tensor, not a list
@@ -121,4 +123,4 @@ class DetectionPredictor(BasePredictor):
             (Results): Results object containing the original image, image path, class names, and scaled bounding boxes.
         """
         pred[:, :4] = ops.scale_boxes(img.shape[2:], pred[:, :4], orig_img.shape)
-        return Results(orig_img, path=img_path, names=self.model.names, boxes=pred[:, :6])
+        return Results(orig_img, path=img_path, names=self.model.names, boxes=pred[:, :7])
